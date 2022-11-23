@@ -1,0 +1,40 @@
+#Ansible Playbook with built-in Powershell script
+#Disk Check for Windows
+#By: Ryan J. Moore
+#Date: 2022-11-23
+#Assign the disk letter and warning percentage (of used space)
+---
+- name: Powershell Disk Check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Powershell
+      win_shell: |
+         [char]$diskLetr="c"
+         [double]$warnPct=85.0
+         [double]$convToGB=[Math]::Pow(1024,3)
+         [double]$diskFree=(get-psdrive $diskLetr).free/$convToGB
+         [double]$diskUsed=(get-psdrive $diskLetr).used/$convToGB
+         [double]$diskTotal=$diskFree+$diskUsed
+         [double]$diskFreePct=($diskFree/$diskTotal)*100
+         [double]$diskUsedPct=($diskUsed/$diskTotal)*100
+         [double]$freePct=[Math]::round($diskFreePct,2)
+         [double]$usedPCt=[Math]::round($diskUsedPct,2)
+         if ($usedPct -ge $warnPct) {
+            Write-Output("Fail")
+            }
+         else {
+            Write-Output("OK")
+              }
+      register: ps_disk_chk
+    - name: Command Output
+      debug:
+        var: ps_disk_chk.stdout
+    - name: Conditional Pass
+      debug:
+        msg: Disk Check Passed
+      when: ps_disk_chk.stdout == "OK\r\n"
+    - name: Conditional Fail
+      fail:
+        msg: Disk Check Failed
+      when: ps_disk_chk.stdout == "Fail\r\n"
